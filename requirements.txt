@@ -1,0 +1,6 @@
+faster-whisper
+torch
+torchaudio
+pyannote.audio
+PySide6
+numpy

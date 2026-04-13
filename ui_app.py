@@ -4,7 +4,7 @@ from typing import Dict
 import os
 
 from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtGui import QAction, QFont
+from PySide6.QtGui import QAction, QFont, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QDialog,
+    QSizePolicy,
+    QScrollArea,
 )
 
 from backend.pipeline import SpeechPipeline
@@ -40,8 +42,8 @@ class UIStrings:
     confirm: str
     nav_home: str
     nav_transcribe: str
-    nav_speakers: str
-    nav_export: str
+    nav_analysis: str
+    nav_keywords: str
     nav_settings: str
     welcome_title: str
     welcome_body: str
@@ -56,9 +58,10 @@ class UIStrings:
     progress_running: str
     preview_group: str
     log_group: str
-    speaker_group: str
-    speaker_hint: str
-    export_group: str
+    analysis_group: str
+    analysis_hint: str
+    keyword_detect_group: str
+    keyword_detect_hint: str
     developer_group: str
     watermark: str
     developer_statement: str
@@ -70,21 +73,24 @@ class UIStrings:
     about_body: str
     splash_title: str
     splash_body: str
+    system_overview_group: str
+    system_overview_hint: str
+    image_missing_text: str
 
 
 STRINGS: Dict[str, UIStrings] = {
     "zh": UIStrings(
-        title="语音转写与说话人识别工具",
+        title="工业语音识别与分析系统",
         choose_language="选择界面语言",
         language_hint="请选择启动语言。后续可以在设置页扩展语言切换。",
         confirm="进入程序",
         nav_home="首页",
         nav_transcribe="转写",
-        nav_speakers="说话人",
-        nav_export="导出",
+        nav_analysis="数据分析",
+        nav_keywords="关键词检出",
         nav_settings="设置",
-        welcome_title="项目控制台",
-        welcome_body="当前版本以语音识别为核心，后续可继续扩展结构化工业数据提取、导出和分析模块。",
+        welcome_title="工业系统总览",
+        welcome_body="首页展示工业系统概况图。今后语音系统提取出的设备状态、异常提示与关键结果，可直接映射到该图中进行显示。",
         input_group="输入文件",
         choose_file="选择音频/视频文件",
         selected_file="当前文件：未选择",
@@ -96,33 +102,37 @@ STRINGS: Dict[str, UIStrings] = {
         progress_running="处理中...",
         preview_group="结果预览",
         log_group="运行日志",
-        speaker_group="说话人映射（预留扩展）",
-        speaker_hint="未来可在这里把 SPEAKER_00、SPEAKER_01 映射成真实姓名。",
-        export_group="导出与集成（预留扩展）",
+        analysis_group="数据分析（预留扩展）",
+        analysis_hint="今后基于语音系统提取出的信息，在此页面中进行异常检测、安全分析、趋势判断与数据库连接等扩展。",
+        keyword_detect_group="关键词检出（预留扩展）",
+        keyword_detect_hint="今后将把识别出的锅炉、反应釜、阀门、压力、温度等关键词按频次或类别在此列出排序。",
         developer_group="开发者声明",
-        watermark="Internal Build",
+        watermark="CZF PROJECT",
         developer_statement="开发者声明：本程序当前为本地开发版本，识别结果仅供辅助整理与研究测试使用，请勿将未核对内容直接视为正式记录。",
         status_ready="状态：就绪",
         status_no_file="请先选择文件。",
         menu_file="文件",
         menu_exit="退出",
         about_title="关于",
-        about_body="这是一个以语音识别为核心的工业信息采集原型系统。",
+        about_body="这是一个以语音识别为核心、面向工业信息采集与分析的原型系统。",
         splash_title="正在加载系统",
-        splash_body="欢迎使用。\n正在初始化界面与识别模块，请稍候……",
+        splash_body="欢迎使用。\n感謝你對陳哲飛的支持，请稍候……",
+        system_overview_group="工业系统总览图",
+        system_overview_hint="该图用于展示工业系统整体概况。后续识别出的异常、报警、设备状态等信息将映射到此处。",
+        image_missing_text="未找到系统总览图。\n请将参考图放到：assets/process_overview.jpg",
     ),
     "ja": UIStrings(
-        title="音声文字起こし・話者識別ツール",
+        title="工業音声認識・分析システム",
         choose_language="表示言語を選択",
         language_hint="起動時の言語を選んでください。設定ページで後から拡張できる構成にしています。",
         confirm="開始する",
         nav_home="ホーム",
         nav_transcribe="文字起こし",
-        nav_speakers="話者",
-        nav_export="出力",
+        nav_analysis="データ分析",
+        nav_keywords="キーワード検出",
         nav_settings="設定",
-        welcome_title="プロジェクトコントロール",
-        welcome_body="現段階では音声認識を中核とし、今後は構造化データ抽出や工業向け解析機能へ拡張できます。",
+        welcome_title="工業システム全体図",
+        welcome_body="ホームでは工業システムの概況図を表示します。今後、音声システムから抽出された設備状態、異常情報、重要結果をこの図へ反映できる構成です。",
         input_group="入力ファイル",
         choose_file="音声 / 動画ファイルを選択",
         selected_file="選択中のファイル：未選択",
@@ -134,33 +144,37 @@ STRINGS: Dict[str, UIStrings] = {
         progress_running="処理中...",
         preview_group="結果プレビュー",
         log_group="実行ログ",
-        speaker_group="話者マッピング（拡張予定）",
-        speaker_hint="将来ここで SPEAKER_00 / SPEAKER_01 を実名へ対応付けできます。",
-        export_group="出力・連携（拡張予定）",
+        analysis_group="データ分析（拡張予定）",
+        analysis_hint="今後、音声システムから得られた情報に基づき、異常検知、安全分析、傾向把握、データベース連携などをこの画面に追加します。",
+        keyword_detect_group="キーワード検出（拡張予定）",
+        keyword_detect_hint="今後、ボイラー、反応槽、バルブ、圧力、温度などの検出キーワードをカテゴリまたは頻度順に表示します。",
         developer_group="開発者声明",
-        watermark="Internal Build",
+        watermark="CZF PROJECT",
         developer_statement="開発者声明：本ソフトは現在ローカル開発版です。認識結果は補助用途と検証用途を前提とし、未確認のまま正式記録として扱わないでください。",
         status_ready="状態：待機中",
         status_no_file="先にファイルを選択してください。",
         menu_file="ファイル",
         menu_exit="終了",
         about_title="このアプリについて",
-        about_body="これは音声認識を中核とした工業情報収集の原型システムです。",
+        about_body="これは音声認識を中核とし、工業情報収集と分析へ拡張可能な原型システムです。",
         splash_title="システムを読み込み中",
         splash_body="ようこそ。\n画面と認識モジュールを初期化しています。少々お待ちください……",
+        system_overview_group="工業システム全体図",
+        system_overview_hint="この図は工業システムの全体構成表示用です。将来、異常、警報、設備状態などをここへ反映します。",
+        image_missing_text="システム全体図が見つかりません。\n参考図を assets/process_overview.jpg に配置してください。",
     ),
     "en": UIStrings(
-        title="Speech Transcription & Speaker Tool",
+        title="Industrial Speech Recognition & Analysis System",
         choose_language="Choose interface language",
         language_hint="Select the startup language. The settings area is structured for future expansion.",
         confirm="Enter",
         nav_home="Home",
         nav_transcribe="Transcription",
-        nav_speakers="Speakers",
-        nav_export="Export",
+        nav_analysis="Data Analysis",
+        nav_keywords="Keyword Detection",
         nav_settings="Settings",
-        welcome_title="Project Console",
-        welcome_body="This version focuses on speech recognition as the core. Later it can expand toward structured industrial data extraction and analysis.",
+        welcome_title="Industrial System Overview",
+        welcome_body="The home page displays a high-level industrial system overview diagram. Later, abnormal states, alarms, and extracted equipment information from speech data can be mapped onto this figure.",
         input_group="Input file",
         choose_file="Choose audio/video file",
         selected_file="Current file: none",
@@ -172,20 +186,24 @@ STRINGS: Dict[str, UIStrings] = {
         progress_running="Processing...",
         preview_group="Result preview",
         log_group="Run log",
-        speaker_group="Speaker mapping (reserved)",
-        speaker_hint="Later you can map SPEAKER_00 and SPEAKER_01 to real names here.",
-        export_group="Export & integration (reserved)",
+        analysis_group="Data Analysis (reserved)",
+        analysis_hint="Later, this page will support anomaly detection, safety analysis, trend analysis, and database integration based on extracted speech information.",
+        keyword_detect_group="Keyword Detection (reserved)",
+        keyword_detect_hint="Later, detected keywords such as boiler, reactor, valve, pressure, and temperature will be listed and sorted here.",
         developer_group="Developer statement",
-        watermark="Internal Build",
+        watermark="CZF PROJECT",
         developer_statement="Developer statement: this program is currently a local development build. Outputs are intended for assisted drafting and testing only and should be reviewed before formal use.",
         status_ready="Status: ready",
         status_no_file="Please choose a file first.",
         menu_file="File",
         menu_exit="Exit",
         about_title="About",
-        about_body="This is an industrial information capture prototype centered on speech recognition.",
+        about_body="This is a prototype system centered on speech recognition and designed for future industrial information capture and analysis.",
         splash_title="Loading system",
         splash_body="Welcome.\nInitializing interface and recognition modules. Please wait...",
+        system_overview_group="Industrial System Overview Diagram",
+        system_overview_hint="This figure is reserved for industrial system overview display. Later, alarms, faults, and extracted equipment states can be mapped here.",
+        image_missing_text="Overview image not found.\nPlease place the reference image at: assets/process_overview.jpg",
     ),
 }
 
@@ -305,7 +323,7 @@ class LoadingDialog(QDialog):
         body.setWordWrap(True)
 
         progress = QProgressBar()
-        progress.setRange(0, 0)  # 无限动画
+        progress.setRange(0, 0)
 
         panel_layout.addWidget(title)
         panel_layout.addWidget(body)
@@ -338,6 +356,48 @@ class PageHeader(QFrame):
         layout.addWidget(body_label)
 
 
+class ScaledImageLabel(QLabel):
+    def __init__(self, image_path: str, fallback_text: str):
+        super().__init__()
+        self.image_path = image_path
+        self.fallback_text = fallback_text
+        self._pixmap = QPixmap()
+        self.setAlignment(Qt.AlignCenter)
+        self.setMinimumHeight(520)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setStyleSheet("""
+            QLabel {
+                background: #ffffff;
+                border: 1px solid #7a7a7a;
+                color: #444444;
+            }
+        """)
+        self.load_image()
+
+    def load_image(self):
+        if os.path.exists(self.image_path):
+            self._pixmap = QPixmap(self.image_path)
+            if not self._pixmap.isNull():
+                self._update_scaled_pixmap()
+                return
+
+        self.setText(self.fallback_text)
+        self.setWordWrap(True)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if not self._pixmap.isNull():
+            self._update_scaled_pixmap()
+
+    def _update_scaled_pixmap(self):
+        scaled = self._pixmap.scaled(
+            self.size(),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.setPixmap(scaled)
+
+
 class MainWindow(QMainWindow):
     def __init__(self, language: str):
         super().__init__()
@@ -354,7 +414,7 @@ class MainWindow(QMainWindow):
         )
 
         self.setWindowTitle(self.s.title)
-        self.resize(1180, 760)
+        self.resize(1280, 820)
         self._apply_retro_style()
         self._build_menu()
         self._build_ui()
@@ -441,12 +501,12 @@ class MainWindow(QMainWindow):
         nav = self._build_navigation()
         body.addWidget(nav)
         body.addWidget(self.stack)
-        body.setSizes([190, 900])
+        body.setSizes([190, 980])
 
         self.stack.addWidget(self._build_home_page())
         self.stack.addWidget(self._build_transcribe_page())
-        self.stack.addWidget(self._build_speakers_page())
-        self.stack.addWidget(self._build_export_page())
+        self.stack.addWidget(self._build_analysis_page())
+        self.stack.addWidget(self._build_keyword_detect_page())
         self.stack.addWidget(self._build_settings_page())
 
         footer = self._build_footer()
@@ -499,11 +559,11 @@ class MainWindow(QMainWindow):
         self.nav_list.addItems([
             self.s.nav_home,
             self.s.nav_transcribe,
-            self.s.nav_speakers,
-            self.s.nav_export,
+            self.s.nav_analysis,
+            self.s.nav_keywords,
             self.s.nav_settings,
         ])
-        self.nav_list.setCurrentRow(1)  # 默认打开“转写”
+        self.nav_list.setCurrentRow(0)
         self.nav_list.currentRowChanged.connect(self.stack.setCurrentIndex)
         layout.addWidget(self.nav_list, 1)
 
@@ -515,22 +575,35 @@ class MainWindow(QMainWindow):
         layout.setSpacing(8)
         layout.addWidget(PageHeader(self.s.welcome_title, self.s.welcome_body))
 
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
+        overview_box = QGroupBox(self.s.system_overview_group)
+        overview_layout = QVBoxLayout(overview_box)
+        overview_note = QLabel(self.s.system_overview_hint)
+        overview_note.setWordWrap(True)
 
-        card1 = self._info_card(self.s.input_group, self.s.selected_file)
-        card2 = self._info_card(self.s.keyword_group, self.s.keyword_hint)
-        card3 = self._info_card(self.s.speaker_group, self.s.speaker_hint)
-        card4 = self._info_card(self.s.export_group, "TXT / JSON / SRT / future industrial extensions")
+        image_path = os.path.join("assets", "process_overview.jpg")
+        self.system_image = ScaledImageLabel(image_path, self.s.image_missing_text)
 
-        grid.addWidget(card1, 0, 0)
-        grid.addWidget(card2, 0, 1)
-        grid.addWidget(card3, 1, 0)
-        grid.addWidget(card4, 1, 1)
+        overview_layout.addWidget(overview_note)
+        overview_layout.addWidget(self.system_image, 1)
 
-        layout.addLayout(grid)
-        layout.addStretch(1)
+        log_box = QGroupBox(self.s.log_group)
+        log_layout = QVBoxLayout(log_box)
+        home_log_note = QLabel("首页日志窗口预留给工业系统状态日志。今后语音系统提取出的异常、报警、关键词与分析结果会在这里滚动显示。")
+        home_log_note.setWordWrap(True)
+        self.home_log_text = QPlainTextEdit()
+        self.home_log_text.setReadOnly(True)
+        self.home_log_text.setMaximumHeight(150)
+        self.home_log_text.setPlainText(
+            "[INFO] 系统总览页已加载。\n"
+            "[INFO] 当前页面为工业系统概况图框架。\n"
+            "[INFO] 后续将由语音系统提取出的信息驱动该页。"
+        )
+
+        log_layout.addWidget(home_log_note)
+        log_layout.addWidget(self.home_log_text)
+
+        layout.addWidget(overview_box, 1)
+        layout.addWidget(log_box)
         return page
 
     def _build_transcribe_page(self) -> QWidget:
@@ -607,40 +680,84 @@ class MainWindow(QMainWindow):
         content.setSizes([360, 760])
         return page
 
-    def _build_speakers_page(self) -> QWidget:
+    def _build_analysis_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(8)
-        layout.addWidget(PageHeader(self.s.nav_speakers, self.s.speaker_hint))
+        layout.addWidget(PageHeader(self.s.nav_analysis, self.s.analysis_hint))
 
-        box = QGroupBox(self.s.speaker_group)
-        box_layout = QVBoxLayout(box)
-        note = QLabel(self.s.speaker_hint)
-        note.setWordWrap(True)
-        self.speaker_editor = QPlainTextEdit()
-        self.speaker_editor.setPlaceholderText("SPEAKER_00 = ...\nSPEAKER_01 = ...")
-        box_layout.addWidget(note)
-        box_layout.addWidget(self.speaker_editor)
-        layout.addWidget(box)
-        layout.addStretch(1)
+        top_box = QGroupBox(self.s.analysis_group)
+        top_layout = QVBoxLayout(top_box)
+        top_note = QLabel(self.s.analysis_hint)
+        top_note.setWordWrap(True)
+
+        self.analysis_text = QPlainTextEdit()
+        self.analysis_text.setReadOnly(True)
+        self.analysis_text.setPlaceholderText(
+            "这里预留给后续的数据分析结果。\n"
+            "例如：\n"
+            "- 异常检测\n"
+            "- 安全分析\n"
+            "- 趋势判断\n"
+            "- 数据库联动结果\n"
+        )
+
+        top_layout.addWidget(top_note)
+        top_layout.addWidget(self.analysis_text)
+
+        bottom_box = QGroupBox("分析模块占位")
+        bottom_layout = QGridLayout(bottom_box)
+
+        card1 = self._info_card("异常检测", "基于语音提取出的状态词、设备词和上下文信息，后续在这里进行异常判定。")
+        card2 = self._info_card("安全分析", "根据识别到的报警、故障和关键描述，预留安全分析与风险提示区域。")
+        card3 = self._info_card("趋势分析", "后续可将提取数据按时间维度进行趋势对比与演化分析。")
+        card4 = self._info_card("数据库连接", "未来可接入数据库，对历史记录、状态数据和分析结果进行持久化。")
+
+        bottom_layout.addWidget(card1, 0, 0)
+        bottom_layout.addWidget(card2, 0, 1)
+        bottom_layout.addWidget(card3, 1, 0)
+        bottom_layout.addWidget(card4, 1, 1)
+
+        layout.addWidget(top_box, 1)
+        layout.addWidget(bottom_box)
         return page
 
-    def _build_export_page(self) -> QWidget:
+    def _build_keyword_detect_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(8)
-        layout.addWidget(PageHeader(self.s.nav_export, "Reserved area for future export templates and packaging options."))
+        layout.addWidget(PageHeader(self.s.nav_keywords, self.s.keyword_detect_hint))
 
-        box = QGroupBox(self.s.export_group)
+        box = QGroupBox(self.s.keyword_detect_group)
         box_layout = QVBoxLayout(box)
-        export_note = QLabel("Future expansion points: TXT / JSON / SRT export, report templates, packaging settings, batch mode.")
-        export_note.setWordWrap(True)
-        export_editor = QPlainTextEdit()
-        export_editor.setPlaceholderText("Export presets and integrations will be placed here later.")
-        box_layout.addWidget(export_note)
-        box_layout.addWidget(export_editor)
-        layout.addWidget(box)
-        layout.addStretch(1)
+
+        note = QLabel(self.s.keyword_detect_hint)
+        note.setWordWrap(True)
+
+        self.keyword_detect_text = QPlainTextEdit()
+        self.keyword_detect_text.setReadOnly(True)
+        self.keyword_detect_text.setPlaceholderText(
+            "这里将来用于列出识别出的关键词并排序。\n\n"
+            "示例：\n"
+            "1. 锅炉\n"
+            "2. 反应釜\n"
+            "3. 阀门\n"
+            "4. 温度\n"
+            "5. 压力"
+        )
+
+        box_layout.addWidget(note)
+        box_layout.addWidget(self.keyword_detect_text)
+
+        side_box = QGroupBox("检出分类占位")
+        side_layout = QGridLayout(side_box)
+        side_layout.addWidget(self._info_card("设备类", "锅炉、反应釜、换热器、阀门等"), 0, 0)
+        side_layout.addWidget(self._info_card("状态类", "异常、报警、故障、泄漏等"), 0, 1)
+        side_layout.addWidget(self._info_card("参数类", "温度、压力、流量、液位等"), 1, 0)
+        side_layout.addWidget(self._info_card("动作类", "开启、关闭、检查、调整等"), 1, 1)
+
+        layout.addWidget(box, 1)
+        layout.addWidget(side_box)
         return page
 
     def _build_settings_page(self) -> QWidget:
@@ -768,6 +885,9 @@ class MainWindow(QMainWindow):
             self.log("JSON saved: " + result["json_file"])
             self.log("Done.")
 
+            self.home_log_text.appendPlainText("[INFO] 语音系统完成一次识别任务。")
+            self.home_log_text.appendPlainText("[INFO] 后续可在此页映射设备状态与异常提示。")
+
             self.progress.setValue(100)
             self.progress.setFormat(self.s.progress_ready)
             self.statusBar().showMessage(self.s.status_ready)
@@ -800,7 +920,7 @@ def main():
     def finish_loading():
         loading.close()
         window.show()
-        window.nav_list.setCurrentRow(1)  # 默认切到“转写”页
+        window.nav_list.setCurrentRow(0)
 
     QTimer.singleShot(1400, finish_loading)
 
