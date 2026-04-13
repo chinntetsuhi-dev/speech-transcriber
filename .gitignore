@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+
+# Generated files
+temp/
+output/
+
+# Environment
+.env
+
+# Optional
+input/
+
+# Test files
+test_diarization.py
